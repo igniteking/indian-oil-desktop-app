@@ -32,6 +32,7 @@ dependencies:
   fluent_ui: ^4.9.1
   flutter:
     sdk: flutter
+  process_run: ^1.2.0
   sidebarx: ^0.17.1
 
 dev_dependencies:

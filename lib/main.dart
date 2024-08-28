@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:indian_oil_ai/test.dart';
 
 void main() {
   runApp(const MyApp());
@@ -63,19 +64,9 @@ class _MyHomePageState extends State<MyHomePage> {
     PaneItemSeparator(),
     PaneItem(
       icon: const Icon(FluentIcons.issue_tracking),
-      title: const Text('Track orders'),
+      title: const Text('Python Script Runner Page'),
       infoBadge: const InfoBadge(source: Text('8')),
-      body: const _NavigationBodyItem(
-        header: 'Badging',
-        content: Text(
-          'Badging is a non-intrusive and intuitive way to display '
-          'notifications or bring focus to an area within an app - '
-          'whether that be for notifications, indicating new content, '
-          'or showing an alert. An InfoBadge is a small piece of UI '
-          'that can be added into an app and customized to display a '
-          'number, icon, or a simple dot.',
-        ),
-      ),
+      body: const Testing(),
     ),
     PaneItem(
       icon: const Icon(FluentIcons.disable_updates),
@@ -103,7 +94,16 @@ class _MyHomePageState extends State<MyHomePage> {
         PaneItem(
           icon: const Icon(FluentIcons.mail),
           title: const Text('Mail'),
-          body: const _NavigationBodyItem(),
+          body: const _NavigationBodyItem(
+            header: 'Badging',
+            content: Text(
+                'Badging is a non-intrusive and intuitive way to display '
+                'notifications or bring focus to an area within an app - '
+                'whether that be for notifications, indicating new content, '
+                'or showing an alert. An InfoBadge is a small piece of UI '
+                'that can be added into an app and customized to display a '
+                'number, icon, or a simple dot.'),
+          ),
         ),
         PaneItem(
           icon: const Icon(FluentIcons.calendar),
