@@ -1,8 +1,9 @@
 import 'dart:io'; // Import for File
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:indian_oil_ai/utils/file_utils.dart';
 import 'package:process_run/process_run.dart';
-import 'components/file_uploader.dart';
 
 class Testing extends StatefulWidget {
   const Testing({super.key});
@@ -12,30 +13,58 @@ class Testing extends StatefulWidget {
 }
 
 class _TestingState extends State<Testing> {
-  String _scriptOutput = "";
   String internalPointerVariable = "";
   bool loading = false;
-  String? imagePath;
+  String? imagePath; // To store the path of the image with timestamp
+  String? filePath;
+  String? fileName;
+
+  void pickAndSaveFile() async {
+    setState(() {
+      filePath = null;
+      fileName = null;
+    });
+
+    PlatformFile? file = await FileUtils.pickFile();
+    if (file != null) {
+      // Get the current working directory (where the EXE file is located)
+      String workingDirectory = Directory.current.path;
+
+      // Define the path for the new folder
+      String newFolderPath = '$workingDirectory/uploads';
+      Directory newFolder = Directory(newFolderPath);
+
+      if (!newFolder.existsSync()) {
+        // Create the new folder if it does not exist
+        newFolder.createSync();
+      }
+
+      // Save the file to the new folder
+      String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
+      setState(() {
+        filePath = newVar;
+        fileName = file.name;
+      });
+      print('File saved at: $filePath');
+    }
+  }
 
   Future<void> _runPythonScript(String scriptName, String input) async {
     try {
       setState(() {
-        imagePath = null; // Reset image path to show CircularProgressIndicator again
-        loading = true;   // Show loading indicator while running the script
+        imagePath = null; // Reset image path to show CircularProgressIndicator
+        loading = true; // Show loading indicator while running the script
       });
 
       // Run the Python script and get the result
       final result = await runExecutableArguments(
         'python',
-        [
-          './lib/helpers/$scriptName',
-          input
-        ], // Pass the input string to the Python script
+        ['./lib/helpers/$scriptName', input], // Pass the input file path
       );
 
       setState(() {
-        imagePath = result.stdout.trim(); // Update the image path with the new result
-        loading = false; // Hide loading indicator after the script completes
+        imagePath = result.stdout.trim(); // Capture the new image path with timestamp
+        loading = false; // Hide loading indicator
       });
 
       // Show completion info bar
@@ -64,64 +93,45 @@ class _TestingState extends State<Testing> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            loading = true; // Show CircularProgressIndicator immediately after button click
-          });
+        onPressed: filePath != null
+            ? () {
+                setState(() {
+                  loading = true; // Show CircularProgressIndicator after button click
+                });
 
-          _runPythonScript('data.py', internalPointerVariable).then((_) {
-            setState(() {
-              loading = false; // Hide CircularProgressIndicator when the process completes
-            });
-          });
-        },
+                _runPythonScript('data.py', filePath!).then((_) {
+                  setState(() {
+                    loading = false; // Hide CircularProgressIndicator when done
+                  });
+                });
+              }
+            : null, // Disable the button if filePath is null
         tooltip: 'Submit',
         child: loading
-            ? const ProgressRing() // Show loading indicator while waiting
+            ? const ProgressRing() // Show loading indicator
             : const Text("Submit"), // Show Submit button when not loading
       ),
       body: Column(
         children: [
-          const FileUploader(
-            
-            buttonText: "Upload a File",
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width / 2,
-                  height: 70,
-                  child: Center(
-                    child: InfoLabel(
-                      label: 'Enter your name:',
-                      child: TextBox(
-                        onChanged: (value) {
-                          setState(() {
-                            internalPointerVariable = value;
-                          });
-                        },
-                        placeholder: 'Name',
-                        expands: false,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          ElevatedButton(
+            onPressed: pickAndSaveFile,
+            child: Text(
+              fileName != null
+                  ? 'Selected file: $fileName'
+                  : 'No file selected',
+            ),
           ),
           const SizedBox(height: 100),
           Center(
-            child: imagePath == null
-                ? const ProgressRing() // Show loading indicator when image is null
-                : Image.file(
-                    File(imagePath!), // Add cache-busting query parameter
-                    width: MediaQuery.of(context).size.width / 2,
-                    height: MediaQuery.of(context).size.height / 2,
-                  ),
+            child: loading
+                ? const ProgressRing() // Show loading indicator when processing
+                : imagePath == null
+                    ? const SizedBox.shrink() // Show nothing when imagePath is null
+                    : Image.file(
+                        File(imagePath!), // Display the new image file with timestamp
+                        width: MediaQuery.of(context).size.width / 2,
+                        height: MediaQuery.of(context).size.height / 2,
+                      ),
           ),
         ],
       ),
