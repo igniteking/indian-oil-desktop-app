@@ -7,8 +7,8 @@ input_data = sys.argv[1]  # This captures the input passed from Flutter
 # print(f"Received input: {input_data}")
 
 try:
-    df_ILI = pd.read_excel("./lib/helpers/test2.xlsx")
-    # df_ILI = pd.read_excel("test2.xlsx")
+    # df_ILI = pd.read_excel("./lib/helpers/test2.xlsx")
+    df_ILI = pd.read_excel("test2.xlsx")
 
     # Columns to select
     columns_to_select = ['Stationing (m)', 'Wall surface', 'Up weld dist (m)', 'Elevation']
@@ -25,7 +25,7 @@ try:
     heatmap = sns.heatmap(df.corr(), annot=True, cmap='coolwarm', vmin=-1, vmax=1, center=0)
     
     # Save the heatmap to an image file
-    output_file = 'heatmap.png'
+    output_file = './heatmap.png'
     plt.savefig(output_file)
     plt.close()
     
