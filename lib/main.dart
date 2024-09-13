@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:indian_oil_ai/test.dart';
+import 'package:indian_oil_ai/dataset.dart';
+import 'package:indian_oil_ai/modelTrain.dart';
 
 void main() {
   runApp(const MyApp());
@@ -64,15 +65,14 @@ class _MyHomePageState extends State<MyHomePage> {
     PaneItemSeparator(),
     PaneItem(
       icon: const Icon(FluentIcons.issue_tracking),
-      title: const Text('Python Script Runner Page'),
+      title: const Text('Data Set to analytics'),
       infoBadge: const InfoBadge(source: Text('8')),
       body: const Testing(),
     ),
     PaneItem(
       icon: const Icon(FluentIcons.disable_updates),
-      title: const Text('Disabled Item'),
-      body: const _NavigationBodyItem(),
-      enabled: false,
+      title: const Text('Train Model'),
+      body: const ModelTrain(),
     ),
     PaneItemExpander(
       icon: const Icon(FluentIcons.account_management),
