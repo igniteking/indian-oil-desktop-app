@@ -57,7 +57,7 @@ class _ModelTrainState extends State<ModelTrain> {
 
     // Get the directory where to store the file
     final tempDir = Directory.systemTemp;
-    final file = File('${tempDir.path}/data.py');
+    final file = File('${tempDir.path}/trainner.py');
 
     // Write the script to the file
     await file.writeAsString(pythonScript);
