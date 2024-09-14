@@ -18,54 +18,70 @@ class _PredictionsState extends State<Predictions> {
   String? dataSetData; // JSON string for the table data
   bool loading = false;
   String? imagePath; // To store the path of the image with timestamp
-  String? filePath;
-  String? fileName;
+  String? modelPath;
+  String? model;
+  String? dataSetPath;
+  String? dataSet;
 
-  void pickAndSaveFile() async {
+  void pickAndSaveModel() async {
     setState(() {
-      filePath = null;
-      fileName = null;
+      modelPath = null;
+      model = null;
     });
 
     PlatformFile? file = await FileUtils.pickFile();
     if (file != null) {
-      // Get the current working directory (where the EXE file is located)
       String workingDirectory = Directory.current.path;
-
-      // Define the path for the new folder
       String newFolderPath = '$workingDirectory/uploads';
       Directory newFolder = Directory(newFolderPath);
 
       if (!newFolder.existsSync()) {
-        // Create the new folder if it does not exist
         newFolder.createSync();
       }
 
-      // Save the file to the new folder
       String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
       setState(() {
-        filePath = newVar;
-        fileName = file.name;
+        modelPath = newVar;
+        model = file.name;
       });
-      print('File saved at: $filePath');
+      print('Model file saved at: $modelPath');
+    }
+  }
+
+  void pickAndSaveDataSet() async {
+    setState(() {
+      dataSetPath = null;
+      dataSet = null;
+    });
+
+    PlatformFile? file = await FileUtils.pickFile();
+    if (file != null) {
+      String workingDirectory = Directory.current.path;
+      String newFolderPath = '$workingDirectory/uploads';
+      Directory newFolder = Directory(newFolderPath);
+
+      if (!newFolder.existsSync()) {
+        newFolder.createSync();
+      }
+
+      String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
+      setState(() {
+        dataSetPath = newVar;
+        dataSet = file.name;
+      });
+      print('Dataset file saved at: $dataSetPath');
     }
   }
 
   Future<String> _preparePythonScript() async {
-    // Load the script from the assets
     final pythonScript = await rootBundle.loadString('assets/python/data.py');
-
-    // Get the directory where to store the file
     final tempDir = Directory.systemTemp;
     final file = File('${tempDir.path}/data.py');
-
-    // Write the script to the file
     await file.writeAsString(pythonScript);
-
     return file.path; // Return the path to the Python script
   }
 
-  Future<void> _runPythonScript(String scriptName, String input) async {
+  Future<void> _runPythonScript(String scriptName, String dataSetPath, String modelPath) async {
     final scriptPath = await _preparePythonScript();
 
     try {
@@ -74,42 +90,26 @@ class _PredictionsState extends State<Predictions> {
         loading = true;
       });
 
-      // Check and delete old heatmap image
-      final heatmapFile = File('$imagePath');
-      if (heatmapFile.existsSync()) {
-        heatmapFile.deleteSync();
-        print('Deleted previous heatmap at: $imagePath');
-      }
-
-      // Execute the Python script, passing in the input Excel file
-      final result =
-          await runExecutableArguments('python', [scriptPath, input]);
+      final result = await runExecutableArguments('python', [scriptPath, dataSetPath, modelPath]);
       final scriptOutput = result.stdout.trim();
-
-      // Split the output into individual JSON strings (each line should be a valid JSON object)
       final outputLines = scriptOutput.split('\n');
 
-      // Process each line of output
       for (String line in outputLines) {
         if (line.isNotEmpty) {
           try {
-            final jsonOutput = jsonDecode(line); // Decode each JSON line
+            final jsonOutput = jsonDecode(line);
 
-            // Handle different types of output
             if (jsonOutput['type'] == 'data') {
               setState(() {
-                dataSetData =
-                    jsonOutput['content']; // Display or process the data
+                dataSetData = jsonOutput['content'];
                 loading = false;
               });
             } else if (jsonOutput['type'] == 'image') {
               setState(() {
-                imagePath =
-                    jsonOutput['content']; // Show the path of the heatmap image
+                imagePath = jsonOutput['content'];
                 loading = false;
               });
 
-              // Notify success
               await displayInfoBar(context, builder: (context, close) {
                 return InfoBar(
                   title: const Text('Operation Completed'),
@@ -125,7 +125,7 @@ class _PredictionsState extends State<Predictions> {
               await displayInfoBar(context, builder: (context, close) {
                 return InfoBar(
                   title: const Text('Error'),
-                  content: Text(jsonOutput['message']), // Show error message
+                  content: Text(jsonOutput['message']),
                   action: Button(
                     onPressed: close,
                     child: const Icon(FluentIcons.clear),
@@ -140,7 +140,6 @@ class _PredictionsState extends State<Predictions> {
         }
       }
     } catch (e) {
-      // Handle errors
       await displayInfoBar(context, builder: (context, close) {
         return InfoBar(
           title: const Text('Error'),
@@ -172,19 +171,17 @@ class _PredictionsState extends State<Predictions> {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columns:
-              columns.map((column) => DataColumn(label: Text(column))).toList(),
+          columns: columns.map((column) => DataColumn(label: Text(column))).toList(),
           rows: data.map((row) {
             return DataRow(
-              cells:
-                  row.map((cell) => DataCell(Text(cell.toString()))).toList(),
+              cells: row.map((cell) => DataCell(Text(cell.toString()))).toList(),
             );
           }).toList(),
         ),
       );
     } catch (e) {
       print('Error parsing dataSetData: $e');
-      return const SizedBox.shrink(); // Fallback in case of parsing error
+      return const SizedBox.shrink();
     }
   }
 
@@ -192,24 +189,23 @@ class _PredictionsState extends State<Predictions> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: filePath != null
+        onPressed: (dataSetPath != null && modelPath != null)
             ? () {
                 setState(() {
-                  loading =
-                      true; // Show CircularProgressIndicator after button click
+                  loading = true;
                 });
 
-                _runPythonScript('data.py', filePath!).then((_) {
+                _runPythonScript('data.py', dataSetPath!, modelPath!).then((_) {
                   setState(() {
-                    loading = false; // Hide CircularProgressIndicator when done
+                    loading = false;
                   });
                 });
               }
-            : null, // Disable the button if filePath is null
+            : null, // Disable the button if dataSetPath or modelPath is null
         tooltip: 'Submit',
         child: loading
-            ? const ProgressRing() // Show loading indicator
-            : const Text("Submit"), // Show Submit button when not loading
+            ? const ProgressRing()
+            : const Text("Submit"),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -218,53 +214,45 @@ class _PredictionsState extends State<Predictions> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton(
-                  onPressed: pickAndSaveFile,
+                  onPressed: pickAndSaveDataSet,
                   child: Text(
-                    fileName != null
-                        ? 'Selected file: $fileName'
-                        : 'No file selected',
+                    dataSet != null
+                        ? 'Selected dataset: $dataSet'
+                        : 'Select a Dataset file',
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: pickAndSaveFile,
+                  onPressed: pickAndSaveModel,
                   child: Text(
-                    fileName != null
-                        ? 'Selected file: $fileName'
-                        : 'No file selected',
+                    model != null
+                        ? 'Selected model: $model'
+                        : 'Select a Model.PKL file',
                   ),
                 ),
               ],
             ),
             Center(
               child: loading
-                  ? const ProgressRing() // Show loading indicator when processing
-                  : imagePath == null && dataSetData == null
-                      ? const SizedBox
-                          .shrink() // Show nothing when both imagePath and dataSetData are null
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (dataSetData !=
-                                null) // Check if dataSetData is not null
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child:
-                                    _buildDataTable(), // Display the data table
-                              ),
-                            if (imagePath !=
-                                null) // Check if imagePath is not null
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Image.file(
-                                  File(
-                                      imagePath!), // Display the new image file
-                                  width: MediaQuery.of(context).size.width / 2,
-                                  height:
-                                      MediaQuery.of(context).size.height / 2,
-                                ),
-                              ),
-                          ],
-                        ),
+                  ? const ProgressRing()
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (dataSetData != null)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: _buildDataTable(),
+                          ),
+                        if (imagePath != null)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Image.file(
+                              File(imagePath!),
+                              width: MediaQuery.of(context).size.width / 2,
+                              height: MediaQuery.of(context).size.height / 2,
+                            ),
+                          ),
+                      ],
+                    ),
             ),
           ],
         ),
