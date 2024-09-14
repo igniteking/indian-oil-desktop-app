@@ -7,14 +7,14 @@ import 'package:process_run/process_run.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert'; // Import to handle JSON
 
-class Testing extends StatefulWidget {
-  const Testing({super.key});
+class Predictions extends StatefulWidget {
+  const Predictions({super.key});
 
   @override
-  State<Testing> createState() => _TestingState();
+  State<Predictions> createState() => _PredictionsState();
 }
 
-class _TestingState extends State<Testing> {
+class _PredictionsState extends State<Predictions> {
   String? dataSetData; // JSON string for the table data
   bool loading = false;
   String? imagePath; // To store the path of the image with timestamp
@@ -82,7 +82,8 @@ class _TestingState extends State<Testing> {
       }
 
       // Execute the Python script, passing in the input Excel file
-      final result = await runExecutableArguments('python', [scriptPath, input]);
+      final result =
+          await runExecutableArguments('python', [scriptPath, input]);
       final scriptOutput = result.stdout.trim();
 
       // Split the output into individual JSON strings (each line should be a valid JSON object)
@@ -97,12 +98,14 @@ class _TestingState extends State<Testing> {
             // Handle different types of output
             if (jsonOutput['type'] == 'data') {
               setState(() {
-                dataSetData = jsonOutput['content']; // Display or process the data
+                dataSetData =
+                    jsonOutput['content']; // Display or process the data
                 loading = false;
               });
             } else if (jsonOutput['type'] == 'image') {
               setState(() {
-                imagePath = jsonOutput['content']; // Show the path of the heatmap image
+                imagePath =
+                    jsonOutput['content']; // Show the path of the heatmap image
                 loading = false;
               });
 
@@ -169,10 +172,12 @@ class _TestingState extends State<Testing> {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columns: columns.map((column) => DataColumn(label: Text(column))).toList(),
+          columns:
+              columns.map((column) => DataColumn(label: Text(column))).toList(),
           rows: data.map((row) {
             return DataRow(
-              cells: row.map((cell) => DataCell(Text(cell.toString()))).toList(),
+              cells:
+                  row.map((cell) => DataCell(Text(cell.toString()))).toList(),
             );
           }).toList(),
         ),
@@ -190,7 +195,8 @@ class _TestingState extends State<Testing> {
         onPressed: filePath != null
             ? () {
                 setState(() {
-                  loading = true; // Show CircularProgressIndicator after button click
+                  loading =
+                      true; // Show CircularProgressIndicator after button click
                 });
 
                 _runPythonScript('data.py', filePath!).then((_) {
@@ -208,34 +214,53 @@ class _TestingState extends State<Testing> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            ElevatedButton(
-              onPressed: pickAndSaveFile,
-              child: Text(
-                fileName != null
-                    ? 'Selected file: $fileName'
-                    : 'No file selected',
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: pickAndSaveFile,
+                  child: Text(
+                    fileName != null
+                        ? 'Selected file: $fileName'
+                        : 'No file selected',
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: pickAndSaveFile,
+                  child: Text(
+                    fileName != null
+                        ? 'Selected file: $fileName'
+                        : 'No file selected',
+                  ),
+                ),
+              ],
             ),
             Center(
               child: loading
                   ? const ProgressRing() // Show loading indicator when processing
                   : imagePath == null && dataSetData == null
-                      ? const SizedBox.shrink() // Show nothing when both imagePath and dataSetData are null
+                      ? const SizedBox
+                          .shrink() // Show nothing when both imagePath and dataSetData are null
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            if (dataSetData != null) // Check if dataSetData is not null
+                            if (dataSetData !=
+                                null) // Check if dataSetData is not null
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: _buildDataTable(), // Display the data table
+                                child:
+                                    _buildDataTable(), // Display the data table
                               ),
-                            if (imagePath != null) // Check if imagePath is not null
+                            if (imagePath !=
+                                null) // Check if imagePath is not null
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Image.file(
-                                  File(imagePath!), // Display the new image file
+                                  File(
+                                      imagePath!), // Display the new image file
                                   width: MediaQuery.of(context).size.width / 2,
-                                  height: MediaQuery.of(context).size.height / 2,
+                                  height:
+                                      MediaQuery.of(context).size.height / 2,
                                 ),
                               ),
                           ],

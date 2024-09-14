@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:indian_oil_ai/dataset.dart';
+import 'package:indian_oil_ai/predictions.dart';
 import 'package:indian_oil_ai/modelTrain.dart';
 
 void main() {
@@ -65,14 +65,14 @@ class _MyHomePageState extends State<MyHomePage> {
     PaneItemSeparator(),
     PaneItem(
       icon: const Icon(FluentIcons.issue_tracking),
-      title: const Text('Data Set to analytics'),
+      title: const Text('Train Model'),
       infoBadge: const InfoBadge(source: Text('8')),
-      body: const Testing(),
+      body: const ModelTrain(),
     ),
     PaneItem(
       icon: const Icon(FluentIcons.disable_updates),
-      title: const Text('Train Model'),
-      body: const ModelTrain(),
+      title: const Text('Predictions'),
+      body: const Predictions(),
     ),
     PaneItemExpander(
       icon: const Icon(FluentIcons.account_management),
