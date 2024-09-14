@@ -9,7 +9,12 @@ from datetime import datetime
 #from tensorflow import keras
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import roc_curve, auc
 import json  # Import json to format the output as JSON
 import joblib
 
@@ -49,22 +54,21 @@ def main():
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
 
-        # Classification report
         classification_report_str = classification_report(y_test, y_pred)
-        print(json.dumps({
-            "type": "classification_report",
-            "content": classification_report_str
-        }))
-
-        # Confusion Matrix
+        print('Classification Report:\n', classification_report_str)
         confusion = confusion_matrix(y_test, y_pred)
-        print(json.dumps({
-            "type": "confusion_matrix",
-            "content": confusion.tolist()  # Convert the confusion matrix to a list for JSON serialization
-        }))
+        print('Confusion Matrix:\n', confusion)
+
+        # Prepare the data output
+        data_output = {
+            "type": "data",
+            "content": confusion.to_json(orient="split")  # Convert the DataFrame to JSON format
+        }
+        print(json.dumps(data_output))  # Print the DataFrame as JSON
 
         # Save the model
         joblib.dump(model, 'model.pkl')
+      
 
         # Create and save a heatmap of the dataframe's correlations
         plt.figure(figsize=(10, 8))
