@@ -174,7 +174,13 @@ class _NavigationBodyItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: header != null ? Text(header!) : null,
-      content: content ?? const Center(child: Text('Default content')),
+      content: content ?? Center(child: Column(
+        children: [
+          const Text("Indian Oil"),
+          const SizedBox(height: 50),
+          Image.asset('assets/logo.png'),
+        ],
+      )),
     );
   }
 }
