@@ -67,8 +67,10 @@ def main():
         print(json.dumps(data_output))  # Print the DataFrame as JSON
 
         # Save the model
-        joblib.dump(model, 'model.pkl')
-      
+        model_path = os.path.join(os.getcwd(), 'model.pkl')
+        joblib.dump(model, model_path)
+
+
 
         # Create and save a heatmap of the dataframe's correlations
         plt.figure(figsize=(10, 8))
