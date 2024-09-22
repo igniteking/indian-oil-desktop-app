@@ -15,9 +15,9 @@ class ModelTrain extends StatefulWidget {
 }
 
 class _ModelTrainState extends State<ModelTrain> {
-  String? dataSetData; // JSON string for the table data
+  List<String> dataSetDataList = []; // List to store multiple JSON strings for tables
+  List<String> imagePaths = []; // List to store multiple image paths
   bool loading = false;
-  String? imagePath; // To store the path of the image with timestamp
   String? filePath;
   String? fileName;
 
@@ -53,7 +53,7 @@ class _ModelTrainState extends State<ModelTrain> {
 
   Future<String> _preparePythonScript() async {
     // Load the script from the assets
-    final pythonScript = await rootBundle.loadString('assets/python/data.py');
+    final pythonScript = await rootBundle.loadString('assets/python/train_internal.py');
 
     // Get the directory where to store the file
     final tempDir = Directory.systemTemp;
@@ -70,16 +70,10 @@ class _ModelTrainState extends State<ModelTrain> {
 
     try {
       setState(() {
-        imagePath = null;
+        imagePaths.clear(); // Clear the list for new images
+        dataSetDataList.clear(); // Clear the list for new tables
         loading = true;
       });
-
-      // Check and delete old heatmap image
-      final heatmapFile = File('$imagePath');
-      if (heatmapFile.existsSync()) {
-        heatmapFile.deleteSync();
-        print('Deleted previous heatmap at: $imagePath');
-      }
 
       // Execute the Python script, passing in the input Excel file
       final result = await runExecutableArguments('python', [scriptPath, input]);
@@ -97,26 +91,11 @@ class _ModelTrainState extends State<ModelTrain> {
             // Handle different types of output
             if (jsonOutput['type'] == 'data') {
               setState(() {
-                dataSetData = jsonOutput['content']; // Display or process the data
-                loading = false;
+                dataSetDataList.add(jsonOutput['content']); // Add new data set to the list
               });
             } else if (jsonOutput['type'] == 'image') {
               setState(() {
-                imagePath = jsonOutput['content']; // Show the path of the heatmap image
-                loading = false;
-              });
-
-              // Notify success
-              await displayInfoBar(context, builder: (context, close) {
-                return InfoBar(
-                  title: const Text('Operation Completed'),
-                  content: Text('Image saved at: $imagePath'),
-                  action: Button(
-                    onPressed: close,
-                    child: const Icon(FluentIcons.clear),
-                  ),
-                  severity: InfoBarSeverity.success,
-                );
+                imagePaths.add(jsonOutput['content']); // Add new image path to the list
               });
             } else if (jsonOutput['type'] == 'error') {
               await displayInfoBar(context, builder: (context, close) {
@@ -154,14 +133,16 @@ class _ModelTrainState extends State<ModelTrain> {
       setState(() {
         loading = false;
       });
+    } finally {
+      setState(() {
+        loading = false; // Stop the loading indicator once done
+      });
     }
   }
 
-  Widget _buildDataTable() {
-    if (dataSetData == null) return const SizedBox.shrink();
-
+  Widget _buildDataTable(String dataSetData) {
     try {
-      final Map<String, dynamic> parsedData = jsonDecode(dataSetData!);
+      final Map<String, dynamic> parsedData = jsonDecode(dataSetData);
       final List<String> columns = List<String>.from(parsedData['columns']);
       final List<List<dynamic>> data = List<List<dynamic>>.from(
           parsedData['data'].map((item) => List<dynamic>.from(item)));
@@ -219,21 +200,23 @@ class _ModelTrainState extends State<ModelTrain> {
             Center(
               child: loading
                   ? const ProgressRing() // Show loading indicator when processing
-                  : imagePath == null && dataSetData == null
-                      ? const SizedBox.shrink() // Show nothing when both imagePath and dataSetData are null
+                  : (imagePaths.isEmpty && dataSetDataList.isEmpty)
+                      ? const SizedBox.shrink() // Show nothing when both imagePaths and dataSetDataList are empty
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            if (dataSetData != null) // Check if dataSetData is not null
+                            // Display multiple tables
+                            for (var dataSetData in dataSetDataList)
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: _buildDataTable(), // Display the data table
+                                child: _buildDataTable(dataSetData), // Display the data table
                               ),
-                            if (imagePath != null) // Check if imagePath is not null
+                            // Display multiple images
+                            for (var imagePath in imagePaths)
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Image.file(
-                                  File(imagePath!), // Display the new image file
+                                  File(imagePath), // Display the new image file
                                   width: MediaQuery.of(context).size.width / 2,
                                   height: MediaQuery.of(context).size.height / 2,
                                 ),

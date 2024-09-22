@@ -1,11 +1,11 @@
-import 'dart:io'; // Import for File
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:indian_oil_ai/utils/file_utils.dart';
 import 'package:process_run/process_run.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'dart:convert'; // Import to handle JSON
+import 'dart:convert';
 
 class Predictions extends StatefulWidget {
   const Predictions({super.key});
@@ -74,14 +74,16 @@ class _PredictionsState extends State<Predictions> {
   }
 
   Future<String> _preparePythonScript() async {
-    final pythonScript = await rootBundle.loadString('assets/python/data.py');
+    final pythonScript =
+        await rootBundle.loadString('assets/python/prediction_internal.py');
     final tempDir = Directory.systemTemp;
     final file = File('${tempDir.path}/data.py');
     await file.writeAsString(pythonScript);
     return file.path; // Return the path to the Python script
   }
 
-  Future<void> _runPythonScript(String scriptName, String dataSetPath, String modelPath) async {
+  Future<void> _runPythonScript(
+      String scriptName, String dataSetPath, String modelPath) async {
     final scriptPath = await _preparePythonScript();
 
     try {
@@ -90,7 +92,8 @@ class _PredictionsState extends State<Predictions> {
         loading = true;
       });
 
-      final result = await runExecutableArguments('python', [scriptPath, dataSetPath, modelPath]);
+      final result = await runExecutableArguments(
+          'python', [scriptPath, dataSetPath, modelPath]);
       final scriptOutput = result.stdout.trim();
       final outputLines = scriptOutput.split('\n');
 
@@ -103,6 +106,9 @@ class _PredictionsState extends State<Predictions> {
               setState(() {
                 dataSetData = jsonOutput['content'];
                 loading = false;
+                // Display mismatch count
+                final mismatchCount = jsonOutput['mismatch_count'];
+                print('Number of mismatches: $mismatchCount');
               });
             } else if (jsonOutput['type'] == 'image') {
               setState(() {
@@ -171,91 +177,74 @@ class _PredictionsState extends State<Predictions> {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columns: columns.map((column) => DataColumn(label: Text(column))).toList(),
+          columns: columns
+              .map((e) => DataColumn(
+                  label: Text(e, style: const TextStyle(fontSize: 12))))
+              .toList(),
           rows: data.map((row) {
             return DataRow(
-              cells: row.map((cell) => DataCell(Text(cell.toString()))).toList(),
-            );
+                cells: row
+                    .map((cell) => DataCell(Text(cell.toString())))
+                    .toList());
           }).toList(),
         ),
       );
     } catch (e) {
-      print('Error parsing dataSetData: $e');
+      print('Error parsing JSON data: $e');
       return const SizedBox.shrink();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: (dataSetPath != null && modelPath != null)
-            ? () {
-                setState(() {
-                  loading = true;
-                });
-
-                _runPythonScript('data.py', dataSetPath!, modelPath!).then((_) {
-                  setState(() {
-                    loading = false;
-                  });
-                });
-              }
-            : null, // Disable the button if dataSetPath or modelPath is null
-        tooltip: 'Submit',
-        child: loading
-            ? const ProgressRing()
-            : const Text("Submit"),
+    return ScaffoldPage(
+      header: const PageHeader(
+        title: Text('Predictions'),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: pickAndSaveDataSet,
-                  child: Text(
-                    dataSet != null
-                        ? 'Selected dataset: $dataSet'
-                        : 'Select a Dataset file',
-                  ),
-                ),
-                ElevatedButton(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Model', style: TextStyle(fontSize: 16)),
+          Row(
+            children: [
+              Expanded(
+                child: Button(
                   onPressed: pickAndSaveModel,
-                  child: Text(
-                    model != null
-                        ? 'Selected model: $model'
-                        : 'Select a Model.PKL file',
-                  ),
+                  child: const Text('Choose File'),
                 ),
-              ],
-            ),
-            Center(
-              child: loading
-                  ? const ProgressRing()
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (dataSetData != null)
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: _buildDataTable(),
-                          ),
-                        if (imagePath != null)
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Image.file(
-                              File(imagePath!),
-                              width: MediaQuery.of(context).size.width / 2,
-                              height: MediaQuery.of(context).size.height / 2,
-                            ),
-                          ),
-                      ],
-                    ),
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 16),
+              Text(model ?? 'No model selected'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Dataset', style: TextStyle(fontSize: 16)),
+          Row(
+            children: [
+              Expanded(
+                child: Button(
+                  onPressed: pickAndSaveDataSet,
+                  child: const Text('Choose File'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(dataSet ?? 'No dataset selected'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Button(
+            onPressed: modelPath != null && dataSetPath != null && !loading
+                ? () {
+                    _runPythonScript(
+                        'prediction_internal.py', dataSetPath!, modelPath!);
+                  }
+                : null,
+            child: loading ? const ProgressRing() : const Text('Submit'),
+          ),
+          const SizedBox(height: 16),
+          if (dataSetData != null) Expanded(child: _buildDataTable()),
+          if (imagePath != null) Expanded(child: Image.file(File(imagePath!))),
+        ],
       ),
     );
   }
