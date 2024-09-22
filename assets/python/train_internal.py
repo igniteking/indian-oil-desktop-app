@@ -65,9 +65,7 @@ def main():
         # Return the path to the saved image
         data_output = {
             "type": "image",
-            "content": {
-                "image_path": plot_path  # Include the image path in the output
-            }
+            "image_path":  plot_path  # Include the image path in the output
         }
        
         print(json.dumps(data_output))  # Print the output as JSON

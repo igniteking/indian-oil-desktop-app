@@ -17,7 +17,7 @@ class ModelTrain extends StatefulWidget {
 class _ModelTrainState extends State<ModelTrain> {
   List<String> dataSetDataList =
       []; // List to store multiple JSON strings for tables
-  List<String> imagePaths = []; // List to store multiple image paths
+  String? imagePath; // Change to a single variable for the image
   bool loading = false;
   String? filePath;
   String? fileName;
@@ -30,19 +30,14 @@ class _ModelTrainState extends State<ModelTrain> {
 
     PlatformFile? file = await FileUtils.pickFile();
     if (file != null) {
-      // Get the current working directory (where the EXE file is located)
       String workingDirectory = Directory.current.path;
-
-      // Define the path for the new folder
       String newFolderPath = '$workingDirectory/uploads';
       Directory newFolder = Directory(newFolderPath);
 
       if (!newFolder.existsSync()) {
-        // Create the new folder if it does not exist
         newFolder.createSync();
       }
 
-      // Save the file to the new folder
       String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
       setState(() {
         filePath = newVar;
@@ -53,17 +48,11 @@ class _ModelTrainState extends State<ModelTrain> {
   }
 
   Future<String> _preparePythonScript() async {
-    // Load the script from the assets
     final pythonScript =
         await rootBundle.loadString('assets/python/train_internal.py');
-
-    // Get the directory where to store the file
     final tempDir = Directory.systemTemp;
     final file = File('${tempDir.path}/train_internal.py');
-
-    // Write the script to the file
     await file.writeAsString(pythonScript);
-
     return file.path; // Return the path to the Python script
   }
 
@@ -72,56 +61,58 @@ class _ModelTrainState extends State<ModelTrain> {
 
     try {
       setState(() {
-        imagePaths.clear(); // Clear the list for new images
-        dataSetDataList.clear(); // Clear the list for new tables
+        imagePath = null; // Clear the image path
+        dataSetDataList.clear();
         loading = true;
       });
 
-      // Execute the Python script, passing in the input Excel file
       final result =
           await runExecutableArguments('python', [scriptPath, input]);
       final scriptOutput = result.stdout.trim();
-
-      // Split the output into individual JSON strings (each line should be a valid JSON object)
       final outputLines = scriptOutput.split('\n');
 
-      // Process each line of output
       for (String line in outputLines) {
         if (line.isNotEmpty) {
           try {
-            final jsonOutput = jsonDecode(line); // Decode each JSON line
+            final jsonOutput = jsonDecode(line);
+            if (jsonOutput is Map<String, dynamic> &&
+                jsonOutput.containsKey('type')) {
+              if (jsonOutput['type'] == 'image') {
+                setState(() {
+                  imagePath =
+                      jsonOutput['image_path']; // Store a single image path
+                });
+              }
 
-            // Handle different types of output
-            if (jsonOutput['type'] == 'data') {
-              setState(() {
-                dataSetDataList
-                    .add(jsonOutput['content']); // Add new data set to the list
-              });
-            } else if (jsonOutput['type'] == 'image') {
-              setState(() {
-                imagePaths.add(
-                    jsonOutput['content']); // Add new image path to the list
-              });
-            } else if (jsonOutput['type'] == 'error') {
-              await displayInfoBar(context, builder: (context, close) {
-                return InfoBar(
-                  title: const Text('Error'),
-                  content: Text(jsonOutput['message']), // Show error message
-                  action: Button(
-                    onPressed: close,
-                    child: const Icon(FluentIcons.clear),
-                  ),
-                  severity: InfoBarSeverity.error,
-                );
-              });
+              if (jsonOutput['type'] == 'data') {
+                setState(() {
+                  dataSetDataList.add(jsonOutput['content']);
+                });
+              }
+
+              if (jsonOutput['type'] == 'error') {
+                await displayInfoBar(context, builder: (context, close) {
+                  return InfoBar(
+                    title: const Text('Error'),
+                    content: Text(jsonOutput['message']),
+                    action: Button(
+                      onPressed: close,
+                      child: const Icon(FluentIcons.clear),
+                    ),
+                    severity: InfoBarSeverity.error,
+                  );
+                });
+              }
+            } else {
+              print('Invalid JSON format: Missing "type" key');
             }
           } catch (e) {
-            print('Error decoding line: $e');
+            print('Error decoding line: $line');
+            print('Error: $e');
           }
         }
       }
     } catch (e) {
-      // Handle errors
       await displayInfoBar(context, builder: (context, close) {
         return InfoBar(
           title: const Text('Error'),
@@ -140,7 +131,7 @@ class _ModelTrainState extends State<ModelTrain> {
       });
     } finally {
       setState(() {
-        loading = false; // Stop the loading indicator once done
+        loading = false;
       });
     }
   }
@@ -152,18 +143,14 @@ class _ModelTrainState extends State<ModelTrain> {
       final List<List<dynamic>> data = List<List<dynamic>>.from(
           parsedData['data'].map((item) => List<dynamic>.from(item)));
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns:
-              columns.map((column) => DataColumn(label: Text(column))).toList(),
-          rows: data.map((row) {
-            return DataRow(
-              cells:
-                  row.map((cell) => DataCell(Text(cell.toString()))).toList(),
-            );
-          }).toList(),
-        ),
+      return DataTable(
+        columns:
+            columns.map((column) => DataColumn(label: Text(column))).toList(),
+        rows: data.map((row) {
+          return DataRow(
+            cells: row.map((cell) => DataCell(Text(cell.toString()))).toList(),
+          );
+        }).toList(),
       );
     } catch (e) {
       print('Error parsing dataSetData: $e');
@@ -175,73 +162,70 @@ class _ModelTrainState extends State<ModelTrain> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: const PageHeader(title: Text('Train Model')),
-      content: Padding(
-        padding: const EdgeInsets.all(25.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Data Set', style: TextStyle(fontSize: 16)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Button(
-                    onPressed: pickAndSaveFile,
-                    child: Text(fileName ?? 'No Data Set selected'),
+      content: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Data Set', style: TextStyle(fontSize: 16)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Button(
+                      onPressed: pickAndSaveFile,
+                      child: Text(fileName ?? 'No Data Set selected'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Button(
-              onPressed: filePath != null
-                  ? () {
-                      setState(() {
-                        loading =
-                            true; // Show CircularProgressIndicator after button click
-                      });
-
-                      _runPythonScript('data.py', filePath!).then((_) {
-                        setState(() {
-                          loading =
-                              false; // Hide CircularProgressIndicator when done
-                        });
-                      });
-                    }
-                  : null,
-              child: loading ? const ProgressRing() : const Text('Submit'),
-            ),
-            Center(
-              child: loading
-                  ? null
-                  : (imagePaths.isEmpty && dataSetDataList.isEmpty)
-                      ? const SizedBox
-                          .shrink() // Show nothing when both imagePaths and dataSetDataList are empty
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Display multiple tables
-                            for (var dataSetData in dataSetDataList)
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: _buildDataTable(
-                                    dataSetData), // Display the data table
-                              ),
-                            // Display multiple images
-                            for (var imagePath in imagePaths)
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Image.file(
-                                  File(imagePath), // Display the new image file
-                                  width: MediaQuery.of(context).size.width / 2,
-                                  height:
-                                      MediaQuery.of(context).size.height / 2,
-                                ),
-                              ),
-                          ],
+                ],
+              ),
+              const SizedBox(height: 16),
+              Button(
+                onPressed: filePath != null
+                    ? () {
+                        _runPythonScript('train_internal.py', filePath!);
+                      }
+                    : null,
+                child: loading ? const ProgressRing() : const Text('Submit'),
+              ),
+              const SizedBox(height: 16),
+              if (loading)
+                const Center(child: null)
+              else if (imagePath == null && dataSetDataList.isEmpty)
+                const Center(child: Text('No data or image to display'))
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(children: [
+                      if (imagePath != null)
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Image.file(
+                            File(imagePath!), // Display the new image file
+                            width: MediaQuery.of(context).size.width / 2,
+                            height: MediaQuery.of(context).size.height / 2,
+                          ),
                         ),
-            ),
-          ],
+                    ]),
+                    Column(
+                      children: [
+                        // Display multiple tables
+                        for (var dataSetData in dataSetDataList)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: _buildDataTable(
+                                dataSetData), // Display the data table
+                          ),
+                        // Display the single image
+                      ],
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );
