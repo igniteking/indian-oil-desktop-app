@@ -21,6 +21,7 @@ class _PredictionsState extends State<Predictions> {
   String? model;
   String? dataPath;
   String? data;
+  String? mismatch_count;
 
   void pickAndSaveModel() async {
     setState(() {
@@ -101,6 +102,10 @@ class _PredictionsState extends State<Predictions> {
             if (jsonOutput['type'] == 'data') {
               setState(() {
                 dataSetDataList.add(jsonOutput['content']);
+              });
+            } else if (jsonOutput['type'] == 'mismatch_count') {
+              setState(() {
+                dataSetDataList.add(jsonOutput['mismatch_count']);
               });
             } else if (jsonOutput['type'] == 'error') {
               await _showErrorDialog(jsonOutput['message']);

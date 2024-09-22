@@ -84,16 +84,21 @@ def main():
         # Print the rows where there are mismatches
 
         mismatches
-
-        # Count the number of mismatches
-        mismatch_count = mismatches.shape[0]
-        print(f"Number of mismatches: {mismatch_count}")
         # Prepare the mismatches output
         mismatch_output  = {
             "type": "data",
             "content": mismatches.to_json(orient="split")
         }
         print(json.dumps(mismatch_output))
+
+        # Count the number of mismatches
+        mismatch_count = mismatches.shape[0]
+
+        mismatch_count  = {
+            "type": "mismatch_count",
+            "mismatch_count": mismatch_count.to_json(orient="split")
+        }
+        print(json.dumps(mismatch_count))
 
     except FileNotFoundError as e:
         error_output = {
