@@ -21,7 +21,7 @@ class _PredictionsState extends State<Predictions> {
   String? model;
   String? dataPath;
   String? data;
-  String? mismatch_count;
+  String? mismatchCount;
 
   void pickAndSaveModel() async {
     setState(() {
@@ -60,7 +60,7 @@ class _PredictionsState extends State<Predictions> {
       }
       String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
       setState(() {
-        dataPath = newVar; // Fixed: save to dataPath instead of modelPath
+        dataPath = newVar; // Save to dataPath
         data = file.name; // Update dataset name
       });
       print('Data file saved at: $dataPath');
@@ -102,13 +102,14 @@ class _PredictionsState extends State<Predictions> {
             if (jsonOutput['type'] == 'data') {
               setState(() {
                 dataSetDataList.add(jsonOutput['content']);
-              });
-            } else if (jsonOutput['type'] == 'mismatch_count') {
-              setState(() {
-                dataSetDataList.add(jsonOutput['mismatch_count']);
+                // Ensure mismatch_count is extracted from the correct output
+                mismatchCount = jsonOutput['mismatch_count']?.toString() ??
+                    '0'; // Use '0' if null
+                print('Mismatch count: $mismatchCount');
               });
             } else if (jsonOutput['type'] == 'error') {
               await _showErrorDialog(jsonOutput['message']);
+              print("Error: " + jsonOutput['message']);
             }
           } catch (e) {
             print('Error decoding line: $e');
@@ -145,8 +146,7 @@ class _PredictionsState extends State<Predictions> {
       final List<List<dynamic>> data = List<List<dynamic>>.from(
           parsedData['data'].map((item) => List<dynamic>.from(item)));
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      return Center(
         child: DataTable(
           columns:
               columns.map((column) => DataColumn(label: Text(column))).toList(),
@@ -168,7 +168,7 @@ class _PredictionsState extends State<Predictions> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: const PageHeader(title: Text('Predictions')),
-      content: Padding(
+      content: SingleChildScrollView(
         padding: const EdgeInsets.all(25.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,8 +193,7 @@ class _PredictionsState extends State<Predictions> {
               children: [
                 Expanded(
                   child: Button(
-                    onPressed:
-                        pickAndSaveDataSet, // Fixed: call the correct method
+                    onPressed: pickAndSaveDataSet,
                     child: Text(data ?? 'No dataset selected'),
                   ),
                 ),
@@ -209,28 +208,22 @@ class _PredictionsState extends State<Predictions> {
               child: loading ? const ProgressRing() : const Text('Submit'),
             ),
             const SizedBox(height: 16),
-            if (dataSetDataList.isNotEmpty)
-              Center(
-                child: Column(
-                  children: [
-                    const Text(
-                      "Mismatches between actual vs predicted locations:",
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: dataSetDataList.length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: _buildDataTable(dataSetDataList[index]),
-                          );
-                        },
-                      ),
-                    )
-                  ],
+            if (dataSetDataList.isNotEmpty) ...[
+              const Center(
+                child: Text(
+                  "Mismatches between actual vs predicted locations:",
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
+              Center(
+                child: Text(
+                  "Mismatches Count: $mismatchCount",
+                  style: const TextStyle(fontSize: 20),
+                ),
+              ),
+              ...dataSetDataList
+                  .map((dataSetData) => _buildDataTable(dataSetData)),
+            ],
           ],
         ),
       ),

@@ -124,7 +124,7 @@ class _NavigationBodyItem extends StatelessWidget {
   final String? header;
   final Widget? content;
 
-  const _NavigationBodyItem({this.header, this.content});
+  const _NavigationBodyItem({this.content, this.header});
 
   @override
   Widget build(BuildContext context) {

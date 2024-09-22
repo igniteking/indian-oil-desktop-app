@@ -28,29 +28,20 @@ def main():
     model_path = sys.argv[2]  # Capture the model path
 
     try:
-        # Skip the initial rows to load the actual data
-        df_ILI_AK = pd.read_excel(data_path) # upload the dataset
-
-        # Display the first few rows of the actual ILI survey dataset
-        df_ILI_AK
+        # Load the dataset
+        df_ILI_AK = pd.read_excel(data_path)
 
         # Columns to select
-        columns_to_select = ['Stationing (m)','Wall surface', 'Up weld dist (m)','Elevation']
-
-        # Select the columns using filter
+        columns_to_select = ['Stationing (m)', 'Wall surface', 'Up weld dist (m)', 'Elevation']
+        
+        # Filter the DataFrame to include only the specified columns
         final_df_ILI_AK = df_ILI_AK.filter(columns_to_select)
 
-        # Label "EXT" as 1, and others as 0
+        # Label "INT" as 1 and others as 0 in 'Wall surface' column
         final_df_ILI_AK['Wall surface'] = final_df_ILI_AK['Wall surface'].apply(lambda x: 1 if x == 'INT' else 0)
 
+        # Drop any rows with NaN values
         df = final_df_ILI_AK.dropna()
-
-        # Prepare the data output
-        # data_output = {
-        #     "type": "data",
-        #     "content": df.to_json(orient="split")
-        # }
-        # print(json.dumps(data_output))
 
         # Load the model
         trained_model = joblib.load(model_path)
@@ -61,44 +52,32 @@ def main():
         # Align the new dataset's columns to the model's expected features
         df_ILI_aligned = df[model_features]
 
-        # Predict using the aligned and preprocessed dataset
+        # Predict using the aligned dataset
         predictions = trained_model.predict(df_ILI_aligned)
-
-        # Choose the input feature for mapping
-        input_feature = 'Stationing (m)'
 
         # Create a DataFrame to map input feature values with predictions
         results_df = pd.DataFrame({
-            input_feature: df_ILI_aligned[input_feature],
-            'Prediction': predictions
+            'Stationing (m)': df_ILI_aligned['Stationing (m)'],
+            'Prediction': predictions,
+            'Actual': df['Wall surface']
         })
 
-        results_df['Actual'] = df['Wall surface']
-
-        # Filter the rows where 'actual' is 1
+        # Filter the rows where 'Actual' is 1
         actual_ones = results_df[results_df['Actual'] == 1]
 
-        # Check for mismatches with 'Prediction' column where 'actual' is 1
+        # Check for mismatches where prediction is not 1
         mismatches = actual_ones[actual_ones['Prediction'] != 1]
-
-        # Print the rows where there are mismatches
-
-        mismatches
-        # Prepare the mismatches output
-        mismatch_output  = {
-            "type": "data",
-            "content": mismatches.to_json(orient="split")
-        }
-        print(json.dumps(mismatch_output))
-
         # Count the number of mismatches
         mismatch_count = mismatches.shape[0]
 
-        mismatch_count  = {
-            "type": "mismatch_count",
-            "mismatch_count": mismatch_count.to_json(orient="split")
+        # Prepare the mismatches output
+        mismatch_output = {
+            "type": "data",
+            "content": mismatches.to_json(orient="split"),
+            "mismatch_count": mismatch_count
         }
-        print(json.dumps(mismatch_count))
+        print(json.dumps(mismatch_output))
+
 
     except FileNotFoundError as e:
         error_output = {
