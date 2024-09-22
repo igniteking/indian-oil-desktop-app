@@ -15,13 +15,12 @@ class Predictions extends StatefulWidget {
 }
 
 class _PredictionsState extends State<Predictions> {
-  String? dataSetData; // JSON string for the table data
+  List<String> dataSetDataList = [];
   bool loading = false;
-  String? imagePath; // To store the path of the image with timestamp
   String? modelPath;
   String? model;
-  String? dataSetPath;
-  String? dataSet;
+  String? dataPath;
+  String? data;
 
   void pickAndSaveModel() async {
     setState(() {
@@ -31,14 +30,11 @@ class _PredictionsState extends State<Predictions> {
 
     PlatformFile? file = await FileUtils.pickFile();
     if (file != null) {
-      String workingDirectory = Directory.current.path;
-      String newFolderPath = '$workingDirectory/uploads';
+      String newFolderPath = '${Directory.current.path}/uploads';
       Directory newFolder = Directory(newFolderPath);
-
       if (!newFolder.existsSync()) {
         newFolder.createSync();
       }
-
       String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
       setState(() {
         modelPath = newVar;
@@ -50,26 +46,23 @@ class _PredictionsState extends State<Predictions> {
 
   void pickAndSaveDataSet() async {
     setState(() {
-      dataSetPath = null;
-      dataSet = null;
+      dataPath = null;
+      data = null;
     });
 
     PlatformFile? file = await FileUtils.pickFile();
     if (file != null) {
-      String workingDirectory = Directory.current.path;
-      String newFolderPath = '$workingDirectory/uploads';
+      String newFolderPath = '${Directory.current.path}/uploads';
       Directory newFolder = Directory(newFolderPath);
-
       if (!newFolder.existsSync()) {
         newFolder.createSync();
       }
-
       String? newVar = await FileUtils.saveFileToDirectory(file, newFolderPath);
       setState(() {
-        dataSetPath = newVar;
-        dataSet = file.name;
+        dataPath = newVar; // Fixed: save to dataPath instead of modelPath
+        data = file.name; // Update dataset name
       });
-      print('Dataset file saved at: $dataSetPath');
+      print('Data file saved at: $dataPath');
     }
   }
 
@@ -77,23 +70,27 @@ class _PredictionsState extends State<Predictions> {
     final pythonScript =
         await rootBundle.loadString('assets/python/prediction_internal.py');
     final tempDir = Directory.systemTemp;
-    final file = File('${tempDir.path}/data.py');
+    final file = File('${tempDir.path}/prediction_internal.py');
     await file.writeAsString(pythonScript);
-    return file.path; // Return the path to the Python script
+    return file.path;
   }
 
-  Future<void> _runPythonScript(
-      String scriptName, String dataSetPath, String modelPath) async {
+  Future<void> _runPythonScript() async {
+    if (dataPath == null || modelPath == null) {
+      await _showErrorDialog('Model or data path is null.');
+      return;
+    }
+
     final scriptPath = await _preparePythonScript();
 
     try {
       setState(() {
-        imagePath = null;
+        dataSetDataList.clear();
         loading = true;
       });
 
       final result = await runExecutableArguments(
-          'python', [scriptPath, dataSetPath, modelPath]);
+          'python', [scriptPath, dataPath!, modelPath!]);
       final scriptOutput = result.stdout.trim();
       final outputLines = scriptOutput.split('\n');
 
@@ -101,44 +98,12 @@ class _PredictionsState extends State<Predictions> {
         if (line.isNotEmpty) {
           try {
             final jsonOutput = jsonDecode(line);
-
             if (jsonOutput['type'] == 'data') {
               setState(() {
-                dataSetData = jsonOutput['content'];
-                loading = false;
-                // Display mismatch count
-                final mismatchCount = jsonOutput['mismatch_count'];
-                print('Number of mismatches: $mismatchCount');
-              });
-            } else if (jsonOutput['type'] == 'image') {
-              setState(() {
-                imagePath = jsonOutput['content'];
-                loading = false;
-              });
-
-              await displayInfoBar(context, builder: (context, close) {
-                return InfoBar(
-                  title: const Text('Operation Completed'),
-                  content: Text('Image saved at: $imagePath'),
-                  action: Button(
-                    onPressed: close,
-                    child: const Icon(FluentIcons.clear),
-                  ),
-                  severity: InfoBarSeverity.success,
-                );
+                dataSetDataList.add(jsonOutput['content']);
               });
             } else if (jsonOutput['type'] == 'error') {
-              await displayInfoBar(context, builder: (context, close) {
-                return InfoBar(
-                  title: const Text('Error'),
-                  content: Text(jsonOutput['message']),
-                  action: Button(
-                    onPressed: close,
-                    child: const Icon(FluentIcons.clear),
-                  ),
-                  severity: InfoBarSeverity.error,
-                );
-              });
+              await _showErrorDialog(jsonOutput['message']);
             }
           } catch (e) {
             print('Error decoding line: $e');
@@ -146,30 +111,31 @@ class _PredictionsState extends State<Predictions> {
         }
       }
     } catch (e) {
-      await displayInfoBar(context, builder: (context, close) {
-        return InfoBar(
-          title: const Text('Error'),
-          content: Text('Error: $e'),
-          action: Button(
-            onPressed: close,
-            child: const Icon(FluentIcons.clear),
-          ),
-          severity: InfoBarSeverity.error,
-        );
-      });
-
-      print('Error: $e');
+      await _showErrorDialog('Error: $e');
+    } finally {
       setState(() {
         loading = false;
       });
     }
   }
 
-  Widget _buildDataTable() {
-    if (dataSetData == null) return const SizedBox.shrink();
+  Future<void> _showErrorDialog(String message) async {
+    await displayInfoBar(context, builder: (context, close) {
+      return InfoBar(
+        title: const Text('Error'),
+        content: Text(message),
+        action: Button(
+          onPressed: close,
+          child: const Icon(FluentIcons.clear),
+        ),
+        severity: InfoBarSeverity.error,
+      );
+    });
+  }
 
+  Widget _buildDataTable(String dataSetData) {
     try {
-      final Map<String, dynamic> parsedData = jsonDecode(dataSetData!);
+      final Map<String, dynamic> parsedData = jsonDecode(dataSetData);
       final List<String> columns = List<String>.from(parsedData['columns']);
       final List<List<dynamic>> data = List<List<dynamic>>.from(
           parsedData['data'].map((item) => List<dynamic>.from(item)));
@@ -177,20 +143,18 @@ class _PredictionsState extends State<Predictions> {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          columns: columns
-              .map((e) => DataColumn(
-                  label: Text(e, style: const TextStyle(fontSize: 12))))
-              .toList(),
+          columns:
+              columns.map((column) => DataColumn(label: Text(column))).toList(),
           rows: data.map((row) {
             return DataRow(
-                cells: row
-                    .map((cell) => DataCell(Text(cell.toString())))
-                    .toList());
+              cells:
+                  row.map((cell) => DataCell(Text(cell.toString()))).toList(),
+            );
           }).toList(),
         ),
       );
     } catch (e) {
-      print('Error parsing JSON data: $e');
+      print('Error parsing dataSetData: $e');
       return const SizedBox.shrink();
     }
   }
@@ -198,53 +162,62 @@ class _PredictionsState extends State<Predictions> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
-      header: const PageHeader(
-        title: Text('Predictions'),
-      ),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Model', style: TextStyle(fontSize: 16)),
-          Row(
-            children: [
+      header: const PageHeader(title: Text('Predictions')),
+      content: Padding(
+        padding: const EdgeInsets.all(25.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Model', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Button(
+                    onPressed: pickAndSaveModel,
+                    child: Text(model ?? 'No model selected'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text('Dataset', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Button(
+                    onPressed:
+                        pickAndSaveDataSet, // Fixed: call the correct method
+                    child: Text(data ?? 'No dataset selected'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Button(
+              onPressed: modelPath != null && dataPath != null && !loading
+                  ? _runPythonScript
+                  : null,
+              child: loading ? const ProgressRing() : const Text('Submit'),
+            ),
+            const SizedBox(height: 16),
+            if (dataSetDataList.isNotEmpty)
               Expanded(
-                child: Button(
-                  onPressed: pickAndSaveModel,
-                  child: const Text('Choose File'),
+                child: ListView.builder(
+                  itemCount: dataSetDataList.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: _buildDataTable(dataSetDataList[index]),
+                    );
+                  },
                 ),
               ),
-              const SizedBox(width: 16),
-              Text(model ?? 'No model selected'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Dataset', style: TextStyle(fontSize: 16)),
-          Row(
-            children: [
-              Expanded(
-                child: Button(
-                  onPressed: pickAndSaveDataSet,
-                  child: const Text('Choose File'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(dataSet ?? 'No dataset selected'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Button(
-            onPressed: modelPath != null && dataSetPath != null && !loading
-                ? () {
-                    _runPythonScript(
-                        'prediction_internal.py', dataSetPath!, modelPath!);
-                  }
-                : null,
-            child: loading ? const ProgressRing() : const Text('Submit'),
-          ),
-          const SizedBox(height: 16),
-          if (dataSetData != null) Expanded(child: _buildDataTable()),
-          if (imagePath != null) Expanded(child: Image.file(File(imagePath!))),
-        ],
+          ],
+        ),
       ),
     );
   }
