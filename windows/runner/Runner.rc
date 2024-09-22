@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "indian_oil_ai" "\0"
+            VALUE "FileDescription", "Indian Oil AI\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "indian_oil_ai" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "indian_oil_ai.exe" "\0"
-            VALUE "ProductName", "indian_oil_ai" "\0"
+            VALUE "ProductName", "Indian Oil AI\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

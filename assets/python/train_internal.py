@@ -14,26 +14,22 @@ from sklearn.inspection import PartialDependenceDisplay
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import json  # Import json to format the output as JSON
 import joblib
+from datetime import datetime
 
 def main():
     input_data = sys.argv[1]  # Capture the input passed from Flutter
 
     try:
-
         df_ILI = pd.read_excel(input_data)
 
-        # Columns to select (Distance from the pumping location, wall surface locatiom, upweld distance, elevation)
-        columns_to_select = ['Stationing (m)','Wall surface', 'Up weld dist (m)','Elevation']
-
-        # Select the columns using filter
+        # Columns to select (Distance from the pumping location, wall surface location, upweld distance, elevation)
+        columns_to_select = ['Stationing (m)', 'Wall surface', 'Up weld dist (m)', 'Elevation']
         final_df_ILI = df_ILI.filter(columns_to_select)
 
-        # Label "EXT" as 1, and others as 0
+        # Label "INT" as 1, and others as 0
         final_df_ILI['Wall surface'] = final_df_ILI['Wall surface'].apply(lambda x: 1 if x == 'INT' else 0)
 
         df = final_df_ILI.dropna()
-
-        df
 
         # Separate features (X) and target class (y)
         X = df.drop(columns=['Wall surface'])
@@ -55,28 +51,34 @@ def main():
         # Create PDP
         PartialDependenceDisplay.from_estimator(model, X_train, features)
         plt.title('Partial Dependence Plot')
-        plt.xlabel('features')
+        plt.xlabel('Features')
         plt.ylabel('Predicted Probability of Corrosion')
-        plt.show()
+
+        # Create a timestamp for the image filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        plot_path = f'partial_dependence_plot_{timestamp}.png'  # Filename with timestamp
 
         # Save the plot as an image
-        plt.savefig('partial_dependence_plot.png')  # You can choose other formats like .jpg or .pdf
-        plt.show()
+        plt.savefig(plot_path)  # Save the figure
+        plt.close()  # Close the figure to avoid displaying it
 
+        # Return the path to the saved image
+        data_output = {
+            "type": "image",
+            "content": {
+                "image_path": plot_path  # Include the image path in the output
+            }
+        }
+       
+        print(json.dumps(data_output))  # Print the output as JSON
 
-        columns_to_select = ['Stationing (m)','Depth (mm)', 'Up weld dist (m)','Elevation','Wall surface']
-        # Select the columns using filter
+        # Continue with your regression analysis...
+        columns_to_select = ['Stationing (m)', 'Depth (mm)', 'Up weld dist (m)', 'Elevation', 'Wall surface']
         df_ILI_reg = df_ILI.filter(columns_to_select)
 
-        # Display the final DataFrame
-        # print(df_ILI_reg)
+        df_reg = df_ILI_reg[df_ILI_reg['Wall surface'] == 'INT'].dropna()
 
-        # Filter the DataFrame to select only rows where 'column_name' is 'EXT'
-        df_reg = df_ILI_reg[df_ILI_reg['Wall surface'] == 'INT']
-
-        df_reg = df_reg.dropna()
-
-        X_reg = df_reg[['Up weld dist (m)','Elevation','Stationing (m)']]  # Feature
+        X_reg = df_reg[['Up weld dist (m)', 'Elevation', 'Stationing (m)']]
         y_reg = df_reg['Depth (mm)']
 
         # Split the data into training and testing sets
@@ -92,15 +94,13 @@ def main():
         # Create a DataFrame to compare actual and predicted values
         comparison_df_length = pd.DataFrame({'Actual': y_test_reg, 'Predicted': y_pred_reg})
 
-        # Print a message
-        # print("Here is the comparison of actual vs predicted depth values at the locations of internal corrosion :")
-
-        data_output = {
+        # Prepare output for comparison
+        comparison_output = {
             "type": "data",
             "content": comparison_df_length.to_json(orient="split")  # Convert the DataFrame to JSON format
         }
        
-        print(json.dumps(data_output))  # Print the DataFrame as JSON
+        print(json.dumps(comparison_output))  # Print the comparison DataFrame as JSON
 
     except FileNotFoundError as e:
         error_output = {

@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide Colors;
+import 'package:flutter/material.dart';
 import 'package:indian_oil_ai/predictions.dart';
 import 'package:indian_oil_ai/modelTrain.dart';
 
@@ -15,7 +16,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   // Track the current theme mode
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.system;
 
   void _toggleTheme() {
     setState(() {
@@ -27,7 +28,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return FluentApp(
-      title: 'Indian Oil',
+      title: 'Indian Oil AI',
       themeMode: _themeMode, // Set the current theme mode
       theme: FluentThemeData(
         brightness: Brightness.light,
@@ -66,7 +67,6 @@ class _MyHomePageState extends State<MyHomePage> {
     PaneItem(
       icon: const Icon(FluentIcons.issue_tracking),
       title: const Text('Train Model'),
-      infoBadge: const InfoBadge(source: Text('8')),
       body: const ModelTrain(),
     ),
     PaneItem(
@@ -74,56 +74,12 @@ class _MyHomePageState extends State<MyHomePage> {
       title: const Text('Predictions'),
       body: const Predictions(),
     ),
-    PaneItemExpander(
-      icon: const Icon(FluentIcons.account_management),
-      title: const Text('Account'),
-      body: const _NavigationBodyItem(
-        header: 'PaneItemExpander',
-        content: Text(
-          'Some apps may have a more complex hierarchical structure '
-          'that requires more than just a flat list of navigation '
-          'items. You may want to use top-level navigation items to '
-          'display categories of pages, with children items displaying '
-          'specific pages. It is also useful if you have hub-style '
-          'pages that only link to other pages. For these kinds of '
-          'cases, you should create a hierarchical NavigationView.',
-        ),
-      ),
-      items: [
-        PaneItemHeader(header: const Text('Apps')),
-        PaneItem(
-          icon: const Icon(FluentIcons.mail),
-          title: const Text('Mail'),
-          body: const _NavigationBodyItem(
-            header: 'Badging',
-            content: Text(
-                'Badging is a non-intrusive and intuitive way to display '
-                'notifications or bring focus to an area within an app - '
-                'whether that be for notifications, indicating new content, '
-                'or showing an alert. An InfoBadge is a small piece of UI '
-                'that can be added into an app and customized to display a '
-                'number, icon, or a simple dot.'),
-          ),
-        ),
-        PaneItem(
-          icon: const Icon(FluentIcons.calendar),
-          title: const Text('Calendar'),
-          body: const _NavigationBodyItem(),
-        ),
-      ],
-    ),
     PaneItemWidgetAdapter(
       child: Builder(builder: (context) {
-        if (NavigationView.of(context).displayMode == PaneDisplayMode.compact) {
-          return const FlutterLogo();
-        }
-        return ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 200.0),
-          child: const Row(children: [
-            FlutterLogo(),
-            SizedBox(width: 6.0),
-            Text('This is a custom widget'),
-          ]),
+        return Image.asset(
+          "assets/logo.png",
+          width: 500,
+          height: 500,
         );
       }),
     ),
@@ -133,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return NavigationView(
       appBar: NavigationAppBar(
-        title: const Text('Indian Oil'),
+        title: const Text('Indian Oil AI'),
         leading: null,
         automaticallyImplyLeading: false,
         actions: Padding(
@@ -174,13 +130,86 @@ class _NavigationBodyItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: header != null ? Text(header!) : null,
-      content: content ?? Center(child: Column(
+      content: SingleChildScrollView(
+        child: content ??
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        "assets/logo.png",
+                        width: 200,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color:
+                          FluentTheme.of(context).brightness == Brightness.light
+                              ? Colors.grey.withOpacity(0.1)
+                              : Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Welcome to the Data Analytics applications!',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'This tool offers various functionalities to help you detect anomalies, train models, predict corrosion, and perform forecasting. Here\'s an overview of the features:',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildFeatureSection('Train a New Model',
+                            'Train a machine learning model on your dataset. This feature allows you to upload your data, select model parameters, and train a new model from scratch.'),
+                        _buildFeatureSection('Anomaly Classification',
+                            'Use the trained model to classify and detect anomalies in your data. This feature helps in identifying outliers and irregularities.'),
+                        _buildFeatureSection('Corrosion Prediction',
+                            'Predict corrosion based on historical data and various parameters. This helps in preventative maintenance and ensuring safety.'),
+                        _buildFeatureSection('Forecasting',
+                            'Perform time series forecasting to predict future values based on historical data. This feature is useful for trend analysis and planning.'),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Use the sidebar to navigate to each of these functionalities and start utilizing the tool to its full potential.',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureSection(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Indian Oil"),
-          const SizedBox(height: 50),
-          Image.asset('assets/logo.png'),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            description,
+            style: const TextStyle(fontSize: 14),
+          ),
         ],
-      )),
+      ),
     );
   }
 }
