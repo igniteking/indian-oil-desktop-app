@@ -82,7 +82,6 @@ def main():
         mismatches = actual_ones[actual_ones['Prediction'] != 1]
 
         # Print the rows where there are mismatches
-        # print("Mismatches between actual vs predicted locations :")
 
         mismatches
 

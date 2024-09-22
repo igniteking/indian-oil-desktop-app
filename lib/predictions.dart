@@ -205,15 +205,25 @@ class _PredictionsState extends State<Predictions> {
             ),
             const SizedBox(height: 16),
             if (dataSetDataList.isNotEmpty)
-              Expanded(
-                child: ListView.builder(
-                  itemCount: dataSetDataList.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: _buildDataTable(dataSetDataList[index]),
-                    );
-                  },
+              Center(
+                child: Column(
+                  children: [
+                    const Text(
+                      "Mismatches between actual vs predicted locations:",
+                      style: TextStyle(fontSize: 20),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: dataSetDataList.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: _buildDataTable(dataSetDataList[index]),
+                          );
+                        },
+                      ),
+                    )
+                  ],
                 ),
               ),
           ],
