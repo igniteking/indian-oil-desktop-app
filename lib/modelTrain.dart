@@ -17,7 +17,7 @@ class ModelTrain extends StatefulWidget {
 class _ModelTrainState extends State<ModelTrain> {
   List<String> dataSetDataList =
       []; // List to store multiple JSON strings for tables
-  String? imagePath; // Change to a single variable for the image
+  List<String> imagePaths = []; // List to store multiple image paths
   bool loading = false;
   String? filePath;
   String? fileName;
@@ -61,7 +61,7 @@ class _ModelTrainState extends State<ModelTrain> {
 
     try {
       setState(() {
-        imagePath = null; // Clear the image path
+        imagePaths.clear(); // Clear the image paths
         dataSetDataList.clear();
         loading = true;
       });
@@ -79,8 +79,13 @@ class _ModelTrainState extends State<ModelTrain> {
                 jsonOutput.containsKey('type')) {
               if (jsonOutput['type'] == 'image') {
                 setState(() {
-                  imagePath =
-                      jsonOutput['image_path']; // Store a single image path
+                  imagePaths.addAll([
+                    jsonOutput['pdp_image_path'],
+                    jsonOutput['fi_image_path'],
+                    jsonOutput['box_plot_path'],
+                    jsonOutput['stationing_plot_path'],
+                    jsonOutput['heatmap_plot_path']
+                  ]); // Store all image paths
                 });
               }
 
@@ -92,6 +97,8 @@ class _ModelTrainState extends State<ModelTrain> {
 
               if (jsonOutput['type'] == 'error') {
                 await displayInfoBar(context, builder: (context, close) {
+                  print(jsonOutput['message']);
+
                   return InfoBar(
                     title: const Text('Error'),
                     content: Text(jsonOutput['message']),
@@ -114,6 +121,7 @@ class _ModelTrainState extends State<ModelTrain> {
       }
     } catch (e) {
       await displayInfoBar(context, builder: (context, close) {
+        print(e);
         return InfoBar(
           title: const Text('Error'),
           content: Text('Error: $e'),
@@ -192,35 +200,55 @@ class _ModelTrainState extends State<ModelTrain> {
               const SizedBox(height: 16),
               if (loading)
                 const Center(child: null)
-              else if (imagePath == null && dataSetDataList.isEmpty)
-                const Center(child: Text('No data or image to display'))
+              else if (imagePaths.isEmpty && dataSetDataList.isEmpty)
+                const Center(child: Text('No data or images to display'))
               else
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(children: [
-                      if (imagePath != null)
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Image.file(
-                            File(imagePath!), // Display the new image file
-                            width: MediaQuery.of(context).size.width / 2,
-                            height: MediaQuery.of(context).size.height / 2,
-                          ),
-                        ),
-                    ]),
-                    Column(
-                      children: [
-                        // Display multiple tables
-                        for (var dataSetData in dataSetDataList)
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: _buildDataTable(
-                                dataSetData), // Display the data table
-                          ),
-                        // Display the single image
-                      ],
+                    // Column for the images on the left
+                    Expanded(
+                      flex: 1, // 50% width for images
+                      child: Column(
+                        children: [
+                          if (imagePaths.isNotEmpty)
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: imagePaths.map((path) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Image.file(
+                                    File(path),
+                                    width:
+                                        MediaQuery.of(context).size.width / 2.5,
+                                    height:
+                                        MediaQuery.of(context).size.height / 3,
+                                    fit: BoxFit
+                                        .contain, // Ensures image fits well
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(
+                        width: 16), // Spacer between images and table
+
+                    // Column for the tables on the right
+                    Expanded(
+                      flex: 1, // 50% width for tables
+                      child: Column(
+                        children: [
+                          for (var dataSetData in dataSetDataList)
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: _buildDataTable(dataSetData),
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

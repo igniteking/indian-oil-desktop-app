@@ -148,6 +148,7 @@ class _NavigationBodyItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   Container(
+                    width: MediaQuery.sizeOf(context).width,
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
                       color:

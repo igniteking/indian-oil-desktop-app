@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide Divider;
 import 'package:flutter/material.dart';
 import 'package:indian_oil_ai/utils/file_utils.dart';
 import 'package:process_run/process_run.dart';
@@ -178,9 +178,47 @@ class _PredictionsState extends State<Predictions> {
             Row(
               children: [
                 Expanded(
-                  child: Button(
-                    onPressed: pickAndSaveModel,
-                    child: Text(model ?? 'No model selected'),
+                  child: Expander(
+                    leading: const Icon(FluentIcons.robot), // Corrected part
+                    header: Text(model ?? 'Select a model'),
+                    content: Column(
+                      children: [
+                        SizedBox(
+                          width: MediaQuery.sizeOf(context).width,
+                          child: Button(
+                            onPressed: pickAndSaveModel,
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(FluentIcons.add),
+                                Text(' Add a new model'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Divider(),
+                        SizedBox(
+                          width: MediaQuery.sizeOf(context).width,
+                          child: Button(
+                            onPressed: () => {
+                              setState(() {
+                                modelPath = 'assets/python/model.pkl';
+                                model = 'model.pkl';
+                              })
+                            },
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(FluentIcons.chat_bot),
+                                Text(' Model 0.0.1'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
