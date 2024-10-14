@@ -3,8 +3,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Divider;
 import 'package:flutter/material.dart';
 import 'package:indian_oil_ai/utils/file_utils.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:process_run/process_run.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'dart:convert';
 
 class Predictions extends StatefulWidget {
@@ -22,6 +23,25 @@ class _PredictionsState extends State<Predictions> {
   String? dataPath;
   String? data;
   String? mismatchCount;
+
+  Future<void> loadModel() async {
+    // Load the model from assets
+    ByteData data = await rootBundle.load('assets/python/model.pkl');
+
+    // Get a temporary directory on the device to store the model file
+    Directory tempDir = await getTemporaryDirectory();
+    String tempPath = tempDir.path;
+    File tempFile = File('$tempPath/model.pkl');
+
+    // Write the asset data to the temporary file
+    await tempFile.writeAsBytes(data.buffer.asUint8List());
+
+    // Now you can use the model path
+    setState(() {
+      modelPath = tempFile.path;
+      model = 'model.pkl';
+    });
+  }
 
   void pickAndSaveModel() async {
     setState(() {
@@ -201,12 +221,7 @@ class _PredictionsState extends State<Predictions> {
                         SizedBox(
                           width: MediaQuery.sizeOf(context).width,
                           child: Button(
-                            onPressed: () => {
-                              setState(() {
-                                modelPath = 'assets/python/model.pkl';
-                                model = 'model.pkl';
-                              })
-                            },
+                            onPressed: () => {loadModel()},
                             child: const Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisAlignment: MainAxisAlignment.center,
